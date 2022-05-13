@@ -29,9 +29,14 @@
             
             <div class="education-container container-block">
                 <h2 class="container-block-title">Education</h2>
+                 <div class="item">
+                    <h4 class="degree">M.S. Computer Science</h4>
+                    <h5 class="meta">University of Southern California</h5>
+                    <div class="time">2021 - 2023</div>
+                </div><!--//item-->
                 <div class="item">
                     <h4 class="degree">B.Tech. Computer Science</h4>
-                    <h5 class="meta">VIT Chennai</h5>
+                    <h5 class="meta">Vellore Institute of Technology, Chennai</h5>
                     <div class="time">2016 - 2020</div>
                 </div><!--//item-->
                 
@@ -42,9 +47,9 @@
                     <li class="resume"><i class="fas fa-file"></i><a href="https://drive.google.com/file/d/18dog9u8wHewYs8Ggkqkqv2188A724Sch/view?usp=sharing" target="_blank">Resume</a></li>
                     <li class="linkedin"><i class="fab fa-linkedin-in"></i><a href="https://www.linkedin.com/in/negi-soumya/" target="_blank">Linkedin</a></li>
                     <li class="github"><i class="fab fa-github"></i><a href="https://github.com/negi-soumya" target="_blank">Github</a></li>
-                    <li class="twitter"><i class="fab fa-twitter"></i>@negi-soumya</li>
                     <li class="blog"><i class="fa fa-paperclip"></i><!--<a href="blog/index.html" target="_self">-->Blog</a></li>
                     <!--
+                    <li class="twitter"><i class="fab fa-twitter"></i>@negi-soumya</li>
                     <li class="resume"><i class="fas fa-file"></i><a href="https://drive.google.com/file/d/1EIUJ2ou4rt4BRSxdNl8sbcRyFyf3ETP0/view?usp=sharing" target="_blank">CV</a></li>
                     <li class="email"><i class="fas fa-envelope"></i><a href="mailto:soumya.negi2016@vitstudent.ac.in">Email</a></li>
                     <li class="website"><i class="fas fa-globe"></i><a href="#" target="_blank">Website</a></li>
@@ -79,7 +84,7 @@
             <section class="section summary-section">
                 <h2 class="section-title"><span class="icon-holder"><i class="fas fa-user"></i></span>Career Profile</h2>
                 <div class="summary">
-                    <p>B.Tech graduate from VIT Chennai( Batch of 2020). Interested in <b>Computer Architecture, Parallel Systems, High Performance Computing and Virtualization.</b></p>
+                    <p>Computer Science grad student at University of Southern California. Interested in <b>Operating Systems, Virtualization, Parallel Systems and High Performance Computing.</b></p>
                 </div><!--//summary-->
             </section><!--//section-->
             
@@ -89,10 +94,23 @@
                 <div class="item">
                     <div class="meta">
                         <div class="upper-row">
-                            <h3 class="job-title">Developer Intern</h3>
-                            <div class="time">Summer 2018</div>
+                            <h3 class="job-title">Bhabha Atomic Research Centre, Mumbai</h3>
+                            <div class="time">Jan 2020-Mar 2020</div>
                         </div><!--//upper-row-->
-                        <div class="company">Process Nine Technolodies Pvt. Ltd., Gurgaon</div>
+                        <div class="company">Project Trainee</div>
+                    </div><!--//meta-->
+                    <div class="details">
+                        <p>Interned at the Supercomputing facility in the Computer Division of BARC (Government of India’s nuclear research facility). Worked with Lustre file system and was tasked with creating a new version of lustre_rsync(the primary utility for file system level backup and restoration) with additional features for in-house use.</p>  
+                    </div><!--//details-->
+                </div><!--//item-->
+                
+                <div class="item">
+                    <div class="meta">
+                        <div class="upper-row">
+                            <h3 class="job-title">Process Nine Technolodies Pvt. Ltd., Gurgaon</h3>
+                            <div class="time">May 2018-Jun 2018</div>
+                        </div><!--//upper-row-->
+                        <div class="company">Developer Intern</div>
                     </div><!--//meta-->
                     <div class="details">
                         <p>Extended a rule based Bilingual Machine Translation engine(in Python). Original engine produced a rudimentary translation based on transliteration. Refinement was done for Hindi to Gujarati translation by coding in rules.</p>  
@@ -104,7 +122,37 @@
             
             <section class="section projects-section">
                 <h2 class="section-title"><span class="icon-holder"><i class="fas fa-archive"></i></span>Projects</h2>
-                <div class="intro"> Few of the projects undertaken during undergrad coursework. </div><!--//intro-->
+                <div class="intro"> Academic projects undertaken: </div><!--//intro-->
+                
+                <div class="item">
+                    <div class="meta">
+                        <div class="upper-row">
+                            <h3 class="job-title">Sequence Alignment</h3>
+                            <div class="time">Spring 2022</div>
+                        </div><!--//upper-row-->
+                        <div class="company">Dynamic Programming</div>
+                    </div><!--//meta-->
+                    <div class="details">
+                        <p>Implemented two different Dynamic Programming solutions for the Sequence Alignment problem in Python; a basic solution and a hybrid memory effecient solution using Divide and Conquer strategy with DP. Analysed the run time and memory usage of the two algorithms using 2 line plots for comparision.
+                        <br>                            
+                        <span class="details"><a href="https://bitbucket.org/negi-soumya/sequence-alignment/src/master/efficient_3.py" target="_blank">[Bitbucket]</a></span></p> 
+                    </div><!--//details-->
+                </div><!--//item-->
+                
+                <div class="item">
+                    <div class="meta">
+                        <div class="upper-row">
+                            <h3 class="job-title">Token Bucket Simulation</h3>
+                            <div class="time">Fall 2021</div>
+                        </div><!--//upper-row-->
+                        <div class="company">Multithreading in C</div>
+                    </div><!--//meta-->
+                    <div class="details">
+                        <p>Simulated a time-driven token bucket filter setup for streamlining incoming data packets. System included a packet arrival facility, a token bucket and the transmission facility(2 server entities). Mechanism ran in either of deterministic(uniform control parameters for all packets) or trace-driven mode(non-uniform control parameters provided in trace specification file) with provision for SIGINT interrupt handling for a graceful finish.
+                        <br>                            
+                        
+                    </div><!--//details-->
+                </div><!--//item-->
                 
                 <div class="item">
                     <div class="meta">
