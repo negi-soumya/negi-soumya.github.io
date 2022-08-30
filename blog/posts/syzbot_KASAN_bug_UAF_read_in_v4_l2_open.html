@@ -72,7 +72,8 @@
 Linux Kernel Mentorship Program</a>, I worked on the bug <a href="https://syzkaller.appspot.com/bug?id=0e3c97f1c4112e102c9988afd5eff079350eab7f" target="_blank">
 <i>KASAN: use-after-free Read in v4l2_fh_open</i></a> amongst multiple other bugs 
 reported by <a href="https://syzkaller.appspot.com/upstream" target="_blank">Syzbot</a>.
-My patch for this bug is still under review at this time. I'll update and post 
+My <a href="https://lore.kernel.org/lkml/20220829132548.23520-1-soumya.negi97@gmail.com/" target="_blank">
+patch</a> for this bug is still under review at this time. I'll update and post 
 any feedback I will receive from the maintainers.</p>
 
 
@@ -156,7 +157,7 @@ after it has been freed in a call to <code>em28xx_v4l2_init()</code>.
 <h3>Cause of bug</h3> <!-- Mark sub-section -->
 	<p>The bug arises because the em28xx driver registers a V4L2 video 
 device(<code>struct video_device</code>) with the V4L2 interface in <code>em28xx_v4l2_init()</code>, 
-but the V4L2 extension initialization eventually fails and the video device is unregistered.
+but the V4L2 extension initialization eventually fails mid-way and the video device is unregistered.
 <code>v4l2_open()</code> in the V4L2 interface views the device as registered (because
  <code>video_is_registered()</code> in the <code>videodevice</code> module returns true) and allows calls 
 to <code>em28xx_v4l2_open()</code> in the driver code.</p>
@@ -171,20 +172,35 @@ it on to <code>v4l2_fh_open</code> which in turn is passing it onto
 
 <h2>Arriving at a bug fix</h2> <!-- Mark section -->
 
+	<p>The process I used to work on the bug was far from perfect. But still, the 
+below section lists out the various strategies I thought out and tried. Clearly, 
+most of them were not the fix. However, it was helpful to come up with them because 
+I was able to follow up in a new direction by looking at why a certain approach was 
+not working out. Mostly, I had to refer back to the subsystem documentation and 
+rest of the subsystem code to study up on Linux Media internals.</p>
+	
 <h3>Try #1</h3> <!-- Mark sub-section -->
-As a brute attempt, I increased the refcount to <code>struct em28xx_v4l2_ *v4l2</code> in <code>em28xx_v4l2_open()</code> using <code>kref_get()</code> with the mutex <code>dev->lock</code> (part of <code>struct em28xx</code>) to prevent <code>video_device_unregsiter()</code> from freeing up device. However, it doesn't make any sense to do this. And, <code>vdev</code> was stil read before <code>kref_get()</code> causing use-after-free read. 
+As a brute attempt, I increased the refcount to <code>struct em28xx_v4l2_ *v4l2</code> in <code>em28xx_v4l2_open()</code> using <code>kref_get()</code> with the mutex <code>dev->lock</code> (part of <code>struct em28xx</code>) locked to prevent <code>video_device_unregister()</code> from freeing up device while <code>em28xx_v4l2_open()</code> uses <code>vdev</code>. However, it doesn't make any sense to do this. The <code>vdev</code> can already be freed before it is extracted from file in <code>em28xx_v4l2_open()</code>. <code>vdev</code> can still be read before <code>kref_get()</code> causing use-after-free read. 
 
 <h3>Try #2</h3> <!-- Mark sub-section -->
-I attempted to solve the race via locking in <code>v4l2-dev.c</code>. With reference to the mutex <code>videodev_lock</code> static to <code>v4l2-dev.c</code>, I locked the call to <code>device_unregister()</code> inside <code>video_device_register()</code> using <code>videodev_lock</code>. This logic was wrong and caused a deadlock.
+I attempted to solve the race via additional locking in <code>v4l2-dev.c</code>. I considered locking the call to <code>device_unregister()</code> inside <code>video_device_register()</code> and locking the <code>vdev</code> extraction inside <code>em28xx_v4l2_open()</code> using the mutex <code>videodev_lock</code> static to <code>v4l2-dev.c</code>. This logic was wrong and caused a deadlock.
 
 <h3>Try #3</h3> <!-- Mark sub-section -->
 Used the mutex <code>vdev->lock</code> inside <code>v4l2_open()</code> and <code>em28xx_v4l2_init()</code> to make them mutually exclusive. This also deadlocked.
 
 <h3>Try #4</h3> <!-- Mark sub-section -->
-The only viable option(i.e. locks common to both function whose use would not create a deadlock ) was the mutex available in the <code>struct em28xx device</code> pointer <code>*dev</code>(i.e <code>dev->lock</code>). By locking the video device <code>vdev(</code>a <code>struct video_device</code> object) extraction from file in <code>em28xx_v4l2_open()</code>, the issue still remained as after kfree() on </code>vdev</code>, vdev is not and can not be nulled since it is not a pointer. Thus, there is no way to check if vdev has been freed or not.
+	<p>The only viable option(i.e. locks common to both functions whose use would not create a deadlock ) was the mutex available in the <code>struct em28xx device</code> pointer <code>*dev</code>(i.e <code>dev->lock</code>). <code>video_device_unregister</code> marks <code>vdev</code> as unregistered with <code>dev->lock</code> locked. What if <code>vdev(</code> extraction from file in <code>em28xx_v4l2_open()</code> is locked with <code>dev->lock</code> as well? The issue still remained.</p> 
+	<p>Pointer to <code>vdev</code> extracted from file eventually points to a <code>struct video_device</code> object. So, if <code>device_unregister()</code> is called on </code>vdev</code> before extraction, <code>vdev</code> is not and can not be nulled since it is not a pointer. Thus, there is no way to check if <code>vdev</code> has been freed or not.</p>
 
 <h3>Try #5 (Worked)</h3> <!-- Mark sub-section -->
-	<p>Since makeing V4L2 extension initialization and <code>v4l2_open()</code> mutually exclusive was not working out, I thought of ways to bar V4L2 open file op
+	<p>Since making V4L2 extension initialization and <code>v4l2_open()</code> mutually exclusive was not working out, I thought of ways to bar V4L2 file open operation (<code>v4l2_open()</code>) while V4L2 extension was being initialized (<code>em28xx_v4l2_init()</code>).</p>
+	
+	
+<h2>The fix</h2> <!-- Mark section -->
+	<p>The <a href="https://lore.kernel.org/lkml/20220829132548.23520-1-soumya.negi97@gmail.com/" target="_blank">patch</a> makes changes in <code>em28xx_v4l2_init(</code>). It temporarily disables V4L2 file operations on <code>struct video_device</code> devices(video, vbi, radio) before registering them and enables the file operations on the <code>video_device</code> only at the end of the <code>em28xx_v4l2_init()</code> codepath in which V4L2 extension initialization has succeeded.</p>
+
+<p>The following templates present in <code>drivers/media/usb/em28xx/em28xx-video.c</code> are used in <code>em28xx_v4l2_init()</code> to initialize the video, vbi and radio devices(all of type <code>struct video_device</code>) before registering them.</p>
+
 <pre><code>static const struct video_device em28xx_video_template = {
 	.fops		= &em28xx_v4l_fops,
  	.ioctl_ops	= &video_ioctl_ops,
@@ -220,7 +236,7 @@ The only viable option(i.e. locks common to both function whose use would not cr
 
 </code></pre>
 
-<p>Create templates for empty v4l2 file ops.</p>
+<p>The patch creates two empty <code>v4l2_file_operations</code> templates <code>em28xx_v4l_fops_empty</code> and <code>radio_fops_empty</code> i.e. the functions to be used for V4L2 file ops are not filled in.</p>
 <pre><code>static const struct v4l2_file_operations em28xx_v4l_fops_empty = {
 	.owner         = THIS_MODULE,
 	.open          = NULL,
@@ -241,26 +257,34 @@ The only viable option(i.e. locks common to both function whose use would not cr
 
 </code></pre>
 
-<p> To disable theV4L2 file ops, use the empty v4l2 file ops templates and then set the
-file op reference to the device templates with valid v4l2 file op function references.</p>
-
-<p>Device templates will be changed as below.</p> 
+<p> The <code>video_device</code> templates now use the empty <code>v4l2_file_operations</code> templates for <code>.fops</code>. This means the <code>video_device</code> intialized will have the V4L2 operations disabled. Device templates will be changed as below.</p> 
 <pre><code>static const struct video_device em28xx_video_template = {
-	.fops		= &em28xx_v4l_fops,
- 	.ioctl_ops	= &video_ioctl_ops,
- 	.release	= video_device_release_empty,
- 	.tvnorms	= V4L2_STD_ALL,
- };
+	.fops		= &em28xx_v4l_fops_empty,
+	.ioctl_ops	= &video_ioctl_ops,
+	.release	= video_device_release_empty,
+	.tvnorms	= V4L2_STD_ALL,
+};
 
 </code></pre>
 <pre><code>static struct video_device em28xx_radio_template = {
-	.fops		= &radio_fops,
- 	.ioctl_ops	= &radio_ioctl_ops,
- 	.release	= video_device_release_empty,
- };
+	.fops		= &radio_fops_empty,
+	.ioctl_ops	= &radio_ioctl_ops,
+	.release	= video_device_release_empty,
+};
 
+</pre></code>
 
+<p>After V4L2 extension is successfully initialized inside <code>em28xx_v4l2_init()</code>, enable V4L2 file operation by setting <code>.fops</code> to <code>em28xx_v4l_fops</code> for the video and vbi devices to and radio devices and <code>em28xx_v4l_fops</code> for the radio device.</p>
 
+<!-- Black block -->
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4">
+<span style="color:#66d9ef">Note: The fix was successfully tested on syzbot and sent for review. Even though the patch 
+      fixes the bug, it makes considerable changes to the em28xx driver. Only the maintainer 
+      will determine if it is right to make these changes. If not, another fix for the bug 
+      will have to be devised. </span>
+</pre></div>
+
+	</div>
 <!-- Full stack trace -->
 <h3>Full stack trace</h3>
 <!-- Black block -->
