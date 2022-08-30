@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en-us" prefix="og: http://ogp.me/ns#">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!--
+  <link rel="canonical" href="" />
+  -->
+ 
+<title>Syzbot bug KASAN: use-after-free Read in v4l2_fh_open</title> <!-- Title -->
+  <link rel="stylesheet" href="../assets/css/flexboxgrid-6.3.1.min.css" />
+  <link rel="stylesheet" href="../assets/css/github-markdown.css" />
+  <link rel="stylesheet" href="../assets/css/highlight/tomorrow.min.css" />
+  <link rel="stylesheet" href="../assets/css/index.css" />
+  
+  <link href="https://fonts.googleapis.com/css?family=Arvo|Permanent+Marker|Bree+Serif" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+
+
+<body>
+  <article class="post English" id="article">
+    <div class="row">
+      <div class="col-xs-12">
+        <div class="site-header">
+          
+<header>
+  <div class="signatures site-title">
+    <a href="../index.html">The Log</a>
+  </div>
+</header>
+<div class="row end-xs">
+  
+  <div class="lang-switch col-xs-3 col-xs-offset-9">
+    <a href="#" id="switch"><i class="fa fa-lightbulb-o"> </i>Switch</a>
+  </div>
+  
+  
+  
+</div>
+<div class="header-line"></div>
+
+        </div>
+        <header class="post-header">
+          <h1 class="post-title">Syzbot bug <i>KASAN: use-after-free Read in v4l2_fh_open</i> </h1> <!-- Title -->
+          
+          <div class="row post-desc">
+            <div class="col-xs-6">
+              
+              <time class="post-date" datetime="2022-08-29 00:00:00 PT"> <!-- Date -->
+                Aug 29, 2022
+              </time>
+              
+            </div>
+            <div class="col-xs-6">
+              
+              <div class="post-author">
+                <a target="_blank" href="https://negi-soumya.github.io">@Soumya Negi</a> <!-- Author -->
+              </div>
+              
+            </div>
+          </div>
+          
+        </header>
+
+<!-- Begin content -->
+        <div class="post-content markdown-body">
+        
+        <p>As part of the Summer '22 round of <a href="https://wiki.linuxfoundation.org/lkmp" target="_blank">
+Linux Kernel Mentorship Program</a>, I worked on the bug <a href="https://syzkaller.appspot.com/bug?id=0e3c97f1c4112e102c9988afd5eff079350eab7f" target="_blank">
+<i>KASAN: use-after-free Read in v4l2_fh_open</i></a> amongst multiple other bugs 
+reported by <a href="https://syzkaller.appspot.com/upstream" target="_blank">Syzbot</a>.
+My patch for this bug is still under review at this time. I'll update and post 
+any feedback I will receive from the maintainers.</p>
+
+
+<!-- Black block -->
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4">
+<span style="color:#66d9ef">Note: I will be describing the bug, my analysis, my patch and how I arrived at the fix. The
+      purpose is to document how I was thinking about the bug. </span>
+</pre></div>
+
+
+<h2>The syzbot dashboard</h2> <!-- Mark section -->
+<p><a href="https://syzkaller.appspot.com/upstream" target="_blank">Syzbot</a> 
+is a cloud based automation system that runs the fuzzer <a href="https://github.com/google/syzkaller" target="_blank">
+Syzkaller</a> continuously on various Linux trees and reports any bugs found. A 
+syzbot bug report includes a lot of information about the crash like the reproducer
+for the bug, call trace, the commit and tree that crashed, config file used, 
+number of crashes, cause and fix bisection attempts etc.</p>
+
+<p> We can also issue commands to syzbot(via email) to test a particular kernel 
+tree and commit for a bug and optionally send it a patch to apply on the tree 
+before testing the bug. This is useful to test out patches or even just to check 
+if the bug still exists in the kernel.</p>
+
+<!-- Black block -->
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4">
+<span style="color:#66d9ef">Note: Just because a bug is marked as open by syzbot does not automatically mean it
+      is still open. </span>
+</pre></div>
+
+<p>There may be a fix for the bug already lined up in the <code>linux-next</code>
+tree or perhaps the fix was patched into the tree but did not have a <code>Fixes</code>
+/<code>Reported</code> tag or maybe syzbot hasn't tested the bug for a while. 
+Since syzbot fuzzes older Linux releases as well, the bug may not occur in newer 
+releases owing to code changes in the kernel. Syzbot docs explain how syzbot 
+determines a bug as closed.</p> 
+
+<p>For both Syzbot and Syzkaller, I found the official docs and the mailing lists 
+to be the best resources for setup and usage info.</p> 
+
+
+<h2>Bug Analysis</h2> <!-- Mark section -->
+
+<!-- Black block -->
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4">
+<span style="color:#66d9ef">Bug Report: <a href="https://syzkaller.appspot.com/bug?id=0e3c97f1c4112e102c9988afd5eff079350eab7f" target="_blank">https://syzkaller.appspot.com/bug?id=0e3c97f1c4112e102c9988afd5eff079350eab7f</a>
+C Reproducer: <a href="https://syzkaller.appspot.com/text?tag=ReproC&x=12663ebdd00000" target="_blank">https://syzkaller.appspot.com/text?tag=ReproC&x=12663ebdd00000</a>
+.config: <a href="https://syzkaller.appspot.com/text?tag=KernelConfig&x=547a5e42ca601229" target="_blank">https://syzkaller.appspot.com/text?tag=KernelConfig&x=547a5e42ca601229</a></span>
+</pre></div>
+	<p>First off, looking at the name of this KASAN bug raises some questions:
+Which resource is being read after its freed? Who is freeing the resource?
+Which codepaths lead to this read-after-free? Are there any checks along such codepaths
+and if so how are they being bypassed? And of course, which subsystems are 
+involved in this bug?</p>
+
+<p>The stack trace printed in the kernel buffer along with GDB helped in 
+analyzing the codepaths. The kernel buffer has three call traces. First, call 
+trace for the use-after-free read of resource. Second, call trace for allocation 
+of the resource. Third, call trace for freeing of resource.</p>
+
+<!-- Black block -->
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4">
+<span style="color:#66d9ef">Note: Scroll to the bottom of the page for the full stack trace decoded using 
+      <i>decode_stacktrace.sh</i>. </span>
+</pre></div>
+
+
+<h3>Subsystems involved</h3> <!-- Mark sub-section -->
+	<p>This bug involves the <a href="https://www.kernel.org/doc/html/v4.9/media/uapi/v4l/v4l2.html" target="_blank">
+V4L2(Video for Linux version 2) infrastructure</a>(<code>/drivers/media/v4l2-core</code>) 
+and the em28xx driver(<code>drivers/media/usb/em28xx</code>) in the <a href="https://linuxtv.org/downloads/v4l-dvb-apis-new/" target="_blank">
+Linux Media subsystem</a>.</p>
+	
+
+<h3>Bug premise</h3> <!-- Mark sub-section -->
+	<p>Video device <code>vdev</code>(of type <code>struct video_device *</code>) 
+is being read in <code>em28xxdev_v4l2_open()</code> (called by <code>v4l2_open()</code>) 
+after it has been freed in a call to <code>em28xx_v4l2_init()</code>.
+
+	
+
+<h3>Cause of bug</h3> <!-- Mark sub-section -->
+	<p>The bug arises because the em28xx driver registers a V4L2 video 
+device(<code>struct video_device</code>) with the V4L2 interface in <code>em28xx_v4l2_init()</code>, 
+but the V4L2 extension initialization eventually fails and the video device is unregistered.
+<code>v4l2_open()</code> in the V4L2 interface views the device as registered (because
+ <code>video_is_registered()</code> in the <code>videodevice</code> module returns true) and allows calls 
+to <code>em28xx_v4l2_open()</code> in the driver code.</p>
+
+	<p> There is a race between <code>video_unregister_device()</code> (called 
+by the V4L2 interface to unregister the video device) and <code>v4l2_open()</code>. 
+<code>em28xx_v4l2_open()</code> is accessing the video device after it has been 
+freed(by the release callback when there is no device user left) and is passing 
+it on to <code>v4l2_fh_open</code> which in turn is passing it onto 
+<code>v4l2_fh_init()</code> where the use-after-free read actually occurs.</p>
+
+
+<h2>Arriving at a bug fix</h2> <!-- Mark section -->
+
+<h3>Try #1</h3> <!-- Mark sub-section -->
+As a brute attempt, I increased the refcount to <code>struct em28xx_v4l2_ *v4l2</code> in <code>em28xx_v4l2_open()</code> using <code>kref_get()</code> with the mutex <code>dev->lock</code> (part of <code>struct em28xx</code>) to prevent <code>video_device_unregsiter()</code> from freeing up device. However, it doesn't make any sense to do this. And, <code>vdev</code> was stil read before <code>kref_get()</code> causing use-after-free read. 
+
+<h3>Try #2</h3> <!-- Mark sub-section -->
+I attempted to solve the race via locking in <code>v4l2-dev.c</code>. With reference to the mutex <code>videodev_lock</code> static to <code>v4l2-dev.c</code>, I locked the call to <code>device_unregister()</code> inside <code>video_device_register()</code> using <code>videodev_lock</code>. This logic was wrong and caused a deadlock.
+
+<h3>Try #3</h3> <!-- Mark sub-section -->
+Used the mutex <code>vdev->lock</code> inside <code>v4l2_open()</code> and <code>em28xx_v4l2_init()</code> to make them mutually exclusive. This also deadlocked.
+
+<h3>Try #4</h3> <!-- Mark sub-section -->
+The only viable option(i.e. locks common to both function whose use would not create a deadlock ) was the mutex available in the <code>struct em28xx device</code> pointer <code>*dev</code>(i.e <code>dev->lock</code>). By locking the video device <code>vdev(</code>a <code>struct video_device</code> object) extraction from file in <code>em28xx_v4l2_open()</code>, the issue still remained as after kfree() on </code>vdev</code>, vdev is not and can not be nulled since it is not a pointer. Thus, there is no way to check if vdev has been freed or not.
+
+<h3>Try #5 (Worked)</h3> <!-- Mark sub-section -->
+	<p>Since makeing V4L2 extension initialization and <code>v4l2_open()</code> mutually exclusive was not working out, I thought of ways to bar V4L2 open file op
+<pre><code>static const struct video_device em28xx_video_template = {
+	.fops		= &em28xx_v4l_fops,
+ 	.ioctl_ops	= &video_ioctl_ops,
+ 	.release	= video_device_release,
+ 	.tvnorms	= V4L2_STD_ALL,
+ };
+
+</code></pre>
+<pre><code>static struct video_device em28xx_radio_template = {
+	.fops		= &radio_fops,
+ 	.ioctl_ops	= &radio_ioctl_ops,
+ 	.release	= video_device_release,
+ };
+
+</code></pre>
+<pre><code>static const struct v4l2_file_operations em28xx_v4l_fops = {
+	.owner         = THIS_MODULE,
+	.open          = em28xx_v4l2_open,
+	.release       = em28xx_v4l2_close,
+	.read          = vb2_fop_read,
+	.poll          = vb2_fop_poll,
+	.mmap          = vb2_fop_mmap,
+	.unlocked_ioctl = video_ioctl2,
+};
+
+</code></pre>
+<pre><code>static const struct v4l2_file_operations radio_fops = {
+	.owner         = THIS_MODULE,
+	.open          = em28xx_v4l2_open,
+	.release       = em28xx_v4l2_close,
+	.unlocked_ioctl = video_ioctl2,
+};
+
+</code></pre>
+
+<p>Create templates for empty v4l2 file ops.</p>
+<pre><code>static const struct v4l2_file_operations em28xx_v4l_fops_empty = {
+	.owner         = THIS_MODULE,
+	.open          = NULL,
+	.release       = NULL,
+	.read          = NULL,
+	.poll          = NULL,
+	.mmap          = NULL,
+	.unlocked_ioctl = NULL,
+};
+
+</code></pre>
+<pre><code>static const struct v4l2_file_operations radio_fops_empty = {
+	.owner         = THIS_MODULE,
+	.open          = NULL,
+	.release       = NULL,
+	.unlocked_ioctl = NULL,
+};
+
+</code></pre>
+
+<p> To disable theV4L2 file ops, use the empty v4l2 file ops templates and then set the
+file op reference to the device templates with valid v4l2 file op function references.</p>
+
+<p>Device templates will be changed as below.</p> 
+<pre><code>static const struct video_device em28xx_video_template = {
+	.fops		= &em28xx_v4l_fops,
+ 	.ioctl_ops	= &video_ioctl_ops,
+ 	.release	= video_device_release_empty,
+ 	.tvnorms	= V4L2_STD_ALL,
+ };
+
+</code></pre>
+<pre><code>static struct video_device em28xx_radio_template = {
+	.fops		= &radio_fops,
+ 	.ioctl_ops	= &radio_ioctl_ops,
+ 	.release	= video_device_release_empty,
+ };
+
+
+
+<pre><code>&lt;nav class=&quot;recent&quot;&gt;
+  &lt;h1&gt;Recent Posts&lt;/h1&gt;
+  &lt;ul&gt;{{range first .Site.Params.SidebarRecentLimit .Site.Recent}}
+    &lt;li&gt;&lt;a href=&quot;{{.RelPermalink}}&quot;&gt;{{.Title}}&lt;/a&gt;&lt;/li&gt;
+  {{end}}&lt;/ul&gt;
+&lt;/nav&gt;
+</code></pre>
+        </div>
+
+<!-- Full stack trace -->
+<h3>Full stack trace</h3>
+<!-- Black block -->
+<pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code>
+[  100.552388][ T8474] ==================================================================
+[  100.552446][ T2915] em28xx 6-1:0.179: no endpoint for DVB mode and transfer type 0
+[ 100.553053][ T8474] BUG: KASAN: use-after-free in v4l2_fh_init (drivers/media/v4l2-core/v4l2-fh.c:25) 
+[  100.553578][ T2915] em28xx 6-1:0.179: failed to pre-allocate USB transfer buffers for DVB.
+[  100.554085][ T8474] Read of size 8 at addr ffff8880216f8838 by task v4l_id/8474
+[  100.554823][ T2915] em28xx 6-1:0.179: Registering input extension
+[  100.555355][ T8474]
+[  100.555379][ T8474] CPU: 1 PID: 8474 Comm: v4l_id Not tainted 6.0.0-rc2.mainline+ #71
+[  100.556090][   T15] em28xx 1-1:0.179: Closing input extension
+[  100.556657][ T8474] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.10.2-1ubuntu1 04/01/2014
+[  100.557268][ T2924] em28xx 5-1:0.179: Closing input extension
+[  100.557940][ T8474] Call Trace:
+[  100.557948][ T8474]  &lt;TASK&gt;
+[ 100.557956][ T8474] dump_stack_lvl (lib/dump_stack.c:107 (discriminator 4)) 
+[ 100.557980][ T8474] print_report.cold (mm/kasan/report.c:318 mm/kasan/report.c:433) 
+[ 100.557999][ T8474] ? v4l2_fh_init (drivers/media/v4l2-core/v4l2-fh.c:25) 
+[ 100.560250][ T8474] kasan_report (mm/kasan/report.c:162 mm/kasan/report.c:497) 
+[ 100.560657][ T8474] ? v4l2_fh_init (drivers/media/v4l2-core/v4l2-fh.c:25) 
+[ 100.561069][ T8474] v4l2_fh_init (drivers/media/v4l2-core/v4l2-fh.c:25) 
+[ 100.561453][ T8474] v4l2_fh_open (drivers/media/v4l2-core/v4l2-fh.c:64) 
+[ 100.561823][ T8474] em28xx_v4l2_open (drivers/media/usb/em28xx/em28xx-video.c:2154) 
+[ 100.562243][ T8474] v4l2_open (drivers/media/v4l2-core/v4l2-dev.c:432) 
+[ 100.562612][ T8474] ? v4l2_ioctl (drivers/media/v4l2-core/v4l2-dev.c:410) 
+[ 100.563042][ T8474] chrdev_open (fs/char_dev.c:415) 
+[  100.563069][ T2924] em28xx 5-1:0.179: Freeing device
+[ 100.563475][ T8474] ? cdev_device_add (fs/char_dev.c:374) 
+[ 100.564184][ T8474] ? fsnotify_perm.part.0 (./include/linux/fsnotify.h:125) 
+[ 100.564613][ T8474] do_dentry_open (fs/open.c:879) 
+[ 100.565054][ T8474] ? cdev_device_add (fs/char_dev.c:374) 
+[ 100.565527][ T8474] ? may_open (fs/namei.c:3204) 
+[ 100.565946][ T8474] path_openat (fs/namei.c:3558 fs/namei.c:3691) 
+[ 100.566344][ T8474] ? path_lookupat (fs/namei.c:3673) 
+[ 100.566757][ T8474] do_filp_open (fs/namei.c:3719) 
+[  100.566964][   T15] em28xx 1-1:0.179: Freeing device
+[ 100.567171][ T8474] ? may_open_dev (fs/namei.c:3712) 
+[ 100.567877][ T8474] ? find_held_lock (kernel/locking/lockdep.c:5156) 
+[ 100.568326][ T8474] ? rwlock_bug.part.0 (kernel/locking/spinlock_debug.c:113) 
+[ 100.568783][ T8474] ? _find_next_bit (lib/find_bit.c:70) 
+[ 100.569216][ T8474] ? _raw_spin_unlock (./arch/x86/include/asm/preempt.h:103 ./include/linux/spinlock_api_smp.h:143 kernel/locking/spinlock.c:186) 
+[ 100.569631][ T8474] ? alloc_fd (fs/file.c:555 (discriminator 10)) 
+[ 100.570004][ T8474] do_sys_openat2 (fs/open.c:1312) 
+[ 100.570403][ T8474] ? build_open_flags (fs/open.c:1297) 
+[ 100.570851][ T8474] ? seccomp_notify_ioctl (kernel/seccomp.c:1193) 
+[ 100.571386][ T8474] __x64_sys_openat (fs/open.c:1338) 
+[ 100.571829][ T8474] ? __ia32_sys_open (fs/open.c:1338) 
+[ 100.572280][ T8474] ? __secure_computing (kernel/seccomp.c:1351) 
+[ 100.572737][ T8474] do_syscall_64 (arch/x86/entry/common.c:50 arch/x86/entry/common.c:80) 
+[ 100.573125][ T8474] entry_SYSCALL_64_after_hwframe (arch/x86/entry/entry_64.S:120) 
+[  100.573632][ T8474] RIP: 0033:0x7ffa67250f1e
+[ 100.574033][ T8474] Code: 25 00 00 41 00 3d 00 00 41 00 74 48 48 8d 05 e9 57 0d 00 8b 00 85 c0 75 69 89 f2 b8 01 01 00 00 48 89 fe bf 9c ff ff ff 0f 05 &lt;48&gt; 3d 00 f0 ff ff 0f 87 a6 00 00 00 48 8b 4c 24 28 64 48 33 0c 25
+All code
+========
+   0:	25 00 00 41 00       	and    $0x410000,%eax
+   5:	3d 00 00 41 00       	cmp    $0x410000,%eax
+   a:	74 48                	je     0x54
+   c:	48 8d 05 e9 57 0d 00 	lea    0xd57e9(%rip),%rax        # 0xd57fc
+  13:	8b 00                	mov    (%rax),%eax
+  15:	85 c0                	test   %eax,%eax
+  17:	75 69                	jne    0x82
+  19:	89 f2                	mov    %esi,%edx
+  1b:	b8 01 01 00 00       	mov    $0x101,%eax
+  20:	48 89 fe             	mov    %rdi,%rsi
+  23:	bf 9c ff ff ff       	mov    $0xffffff9c,%edi
+  28:	0f 05                	syscall 
+  2a:*	48 3d 00 f0 ff ff    	cmp    $0xfffffffffffff000,%rax		&lt;-- trapping instruction
+  30:	0f 87 a6 00 00 00    	ja     0xdc
+  36:	48 8b 4c 24 28       	mov    0x28(%rsp),%rcx
+  3b:	64                   	fs
+  3c:	48                   	rex.W
+  3d:	33                   	.byte 0x33
+  3e:	0c 25                	or     $0x25,%al
+
+Code starting with the faulting instruction
+===========================================
+   0:	48 3d 00 f0 ff ff    	cmp    $0xfffffffffffff000,%rax
+   6:	0f 87 a6 00 00 00    	ja     0xb2
+   c:	48 8b 4c 24 28       	mov    0x28(%rsp),%rcx
+  11:	64                   	fs
+  12:	48                   	rex.W
+  13:	33                   	.byte 0x33
+  14:	0c 25                	or     $0x25,%al
+[  100.575688][ T8474] RSP: 002b:00007ffede4f3c70 EFLAGS: 00000246 ORIG_RAX: 0000000000000101
+[  100.576420][ T8474] RAX: ffffffffffffffda RBX: 00007ffede4f3e48 RCX: 00007ffa67250f1e
+[  100.577073][ T8474] RDX: 0000000000000000 RSI: 00007ffede4f4f1d RDI: 00000000ffffff9c
+[  100.577725][ T8474] RBP: 00005637bb688310 R08: 0000000000000000 R09: 0000000000000000
+[  100.578413][ T8474] R10: 0000000000000000 R11: 0000000000000246 R12: 00005637bb687430
+[  100.579109][ T8474] R13: 00007ffede4f3e40 R14: 0000000000000000 R15: 0000000000000000
+[  100.579817][ T8474]  &lt;/TASK&gt;
+[  100.580112][ T8474]
+[  100.580336][ T8474] Allocated by task 2915:
+[ 100.580624][ T8474] kasan_save_stack (mm/kasan/common.c:39) 
+[ 100.581130][ T8474] __kasan_kmalloc (mm/kasan/common.c:45 mm/kasan/common.c:437 mm/kasan/common.c:516 mm/kasan/common.c:475 mm/kasan/common.c:525) 
+[ 100.581556][ T8474] em28xx_v4l2_init.cold (drivers/media/usb/em28xx/em28xx-video.c:2533 drivers/media/usb/em28xx/em28xx-video.c:2510) 
+[ 100.582072][ T8474] em28xx_init_extension (drivers/media/usb/em28xx/em28xx-core.c:1117) 
+[ 100.582586][ T8474] request_module_async (drivers/media/usb/em28xx/em28xx-cards.c:3420) 
+[ 100.583030][ T8474] process_one_work (kernel/workqueue.c:2294) 
+[ 100.583530][ T8474] worker_thread (./include/linux/list.h:292 kernel/workqueue.c:2437) 
+[ 100.583955][ T8474] kthread (kernel/kthread.c:376) 
+[  100.584009][ T2957] em28xx 6-1:0.179: Closing input extension
+[ 100.584305][ T8474] ret_from_fork (arch/x86/entry/entry_64.S:312) 
+[  100.585178][ T8474]
+[  100.585419][ T8474] Freed by task 2915:
+[ 100.585837][ T8474] kasan_save_stack (mm/kasan/common.c:39) 
+[ 100.586444][ T8474] kasan_set_track (mm/kasan/common.c:45) 
+[ 100.586991][ T8474] kasan_set_free_info (mm/kasan/generic.c:372) 
+[ 100.587485][ T8474] ____kasan_slab_free (mm/kasan/common.c:369 mm/kasan/common.c:329) 
+[ 100.587960][ T8474] slab_free_freelist_hook (mm/slub.c:1780) 
+[ 100.588485][ T8474] kfree (mm/slub.c:3534 mm/slub.c:4562) 
+[ 100.588876][ T8474] kref_put.isra.0 (./include/linux/kref.h:69) 
+[ 100.589260][ T8474] em28xx_v4l2_init.cold (drivers/media/usb/em28xx/em28xx-video.c:2902 drivers/media/usb/em28xx/em28xx-video.c:2510) 
+[ 100.589732][ T8474] em28xx_init_extension (drivers/media/usb/em28xx/em28xx-core.c:1117) 
+[ 100.590273][ T8474] request_module_async (drivers/media/usb/em28xx/em28xx-cards.c:3420) 
+[ 100.590816][ T8474] process_one_work (kernel/workqueue.c:2294) 
+[ 100.591289][ T8474] worker_thread (./include/linux/list.h:292 kernel/workqueue.c:2437) 
+[ 100.591724][ T8474] kthread (kernel/kthread.c:376) 
+[ 100.592103][ T8474] ret_from_fork (arch/x86/entry/entry_64.S:312) 
+[  100.592541][ T8474]
+[  100.592764][ T8474] The buggy address belongs to the object at ffff8880216f8000
+[  100.592764][ T8474]  which belongs to the cache kmalloc-8k of size 8192
+[  100.593998][ T8474] The buggy address is located 2104 bytes inside of
+[  100.593998][ T8474]  8192-byte region [ffff8880216f8000, ffff8880216fa000)
+[  100.595114][ T8474]
+[  100.595302][ T8474] The buggy address belongs to the physical page:
+[  100.595786][ T8474] page:ffffea000085be00 refcount:1 mapcount:0 mapping:0000000000000000 index:0x0 pfn:0x216f8
+[  100.596646][ T8474] head:ffffea000085be00 order:3 compound_mapcount:0 compound_pincount:0
+[  100.597315][ T8474] flags: 0xfff00000010200(slab|head|node=0|zone=1|lastcpupid=0x7ff)
+[  100.597965][ T8474] raw: 00fff00000010200 ffffea00004e2200 dead000000000004 ffff888010c42280
+[  100.598643][ T8474] raw: 0000000000000000 0000000080020002 00000001ffffffff 0000000000000000
+[  100.599322][ T8474] page dumped because: kasan: bad access detected
+[  100.599847][ T8474] page_owner tracks the page as allocated
+[  100.600285][ T8474] page last allocated via order 3, migratetype Unmovable, gfp_mask 0xd2040(__GFP_IO|__GFP_NOWARN|__GFP_NORETRY|__GFP_COMP|__GFP_NOMEMALLOC), pid 6241, tgid 6241 ((cron)), ts 50199051659, free_ts 50198662975
+[ 100.601859][ T8474] get_page_from_freelist (mm/page_alloc.c:2543 mm/page_alloc.c:4283) 
+[ 100.602292][ T8474] __alloc_pages (mm/page_alloc.c:5516) 
+[ 100.602657][ T8474] alloc_pages (mm/mempolicy.c:2270) 
+[ 100.603018][ T8474] allocate_slab (mm/slub.c:1828 mm/slub.c:1969) 
+[ 100.603398][ T8474] ___slab_alloc (mm/slub.c:3032) 
+[ 100.603761][ T8474] __slab_alloc.constprop.0 (mm/slub.c:3118) 
+[ 100.604215][ T8474] kmem_cache_alloc_trace (mm/slub.c:3209 mm/slub.c:3251 mm/slub.c:3282) 
+[ 100.604643][ T8474] tomoyo_init_log (./include/linux/slab.h:600 ./include/linux/slab.h:733 security/tomoyo/audit.c:26 security/tomoyo/audit.c:264) 
+[ 100.605044][ T8474] tomoyo_supervisor (security/tomoyo/common.c:2090) 
+[ 100.605441][ T8474] tomoyo_env_perm (security/tomoyo/environ.c:64 (discriminator 1)) 
+[ 100.605822][ T8474] tomoyo_find_next_domain (security/tomoyo/domain.c:672 security/tomoyo/domain.c:879) 
+[ 100.606286][ T8474] tomoyo_bprm_check_security (./include/linux/srcu.h:189 security/tomoyo/common.h:1122 security/tomoyo/tomoyo.c:103 security/tomoyo/tomoyo.c:91) 
+[ 100.606745][ T8474] security_bprm_check (security/security.c:867 (discriminator 13)) 
+[ 100.607162][ T8474] bprm_execve (fs/exec.c:1723 fs/exec.c:1775 fs/exec.c:1844 fs/exec.c:1806) 
+[ 100.607511][ T8474] do_execveat_common.isra.0 (fs/exec.c:1949) 
+[ 100.607940][ T8474] __x64_sys_execve (fs/exec.c:2094) 
+[  100.608349][ T8474] page last free stack trace:
+[ 100.608738][ T8474] free_pcp_prepare (./include/linux/page_owner.h:24 mm/page_alloc.c:1449 mm/page_alloc.c:1499) 
+[ 100.609154][ T8474] free_unref_page (mm/page_alloc.c:3380 mm/page_alloc.c:3476) 
+[ 100.609523][ T8474] qlist_free_all (mm/kasan/quarantine.c:182) 
+[ 100.609875][ T8474] kasan_quarantine_reduce (./include/linux/srcu.h:189 mm/kasan/quarantine.c:295) 
+[ 100.610291][ T8474] __kasan_slab_alloc (mm/kasan/common.c:449) 
+[ 100.610673][ T8474] kmem_cache_alloc_trace (mm/slab.h:728 mm/slub.c:3243 mm/slub.c:3251 mm/slub.c:3282) 
+[ 100.611112][ T8474] tomoyo_init_log (./include/linux/slab.h:600 ./include/linux/slab.h:733 security/tomoyo/audit.c:26 security/tomoyo/audit.c:264) 
+[ 100.611528][ T8474] tomoyo_supervisor (security/tomoyo/common.c:2090) 
+[ 100.611983][ T8474] tomoyo_env_perm (security/tomoyo/environ.c:64 (discriminator 1)) 
+[ 100.612367][ T8474] tomoyo_find_next_domain (security/tomoyo/domain.c:672 security/tomoyo/domain.c:879) 
+[ 100.612816][ T8474] tomoyo_bprm_check_security (./include/linux/srcu.h:189 security/tomoyo/common.h:1122 security/tomoyo/tomoyo.c:103 security/tomoyo/tomoyo.c:91) 
+[ 100.613353][ T8474] security_bprm_check (security/security.c:867 (discriminator 13)) 
+[ 100.613839][ T8474] bprm_execve (fs/exec.c:1723 fs/exec.c:1775 fs/exec.c:1844 fs/exec.c:1806) 
+[ 100.614255][ T8474] do_execveat_common.isra.0 (fs/exec.c:1949) 
+[ 100.614696][ T8474] __x64_sys_execve (fs/exec.c:2094) 
+[ 100.615060][ T8474] do_syscall_64 (arch/x86/entry/common.c:50 arch/x86/entry/common.c:80) 
+[  100.615440][ T8474]
+[  100.615624][ T8474] Memory state around the buggy address:
+[  100.616072][ T8474]  ffff8880216f8700: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+[  100.616795][ T8474]  ffff8880216f8780: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+[  100.617546][ T8474] &gt;ffff8880216f8800: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+[  100.618455][ T8474]                                         ^
+[  100.618924][ T8474]  ffff8880216f8880: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+[  100.619610][ T8474]  ffff8880216f8900: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+[  100.620274][ T8474] ==================================================================
+
+</code></pre>
+<br><br>
+
+
+<!-- -------------------------End of content---------------------------------- -->
+
+        <div class="row middle-xs"> 
+          <div class="col-xs-12">
+            
+            <div class="post-category"> 
+              <a href="../categories/oss.html"> <!-- Category -->
+                OSS
+              </a>
+            </div>
+            
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-xs-12">
+            
+          </div>
+        </div>
+
+        
+        
+
+<div class="releated-content"> 
+  <h3>Related Posts</h3>
+  <ul> <!-- Add related posts if any -->
+    
+    <li><a href="./getting_started_with_opensource.html">Getting Started with Open Source</a></li>
+    
+  </ul>
+</div>
+
+        
+<!--      
+        <div style="height: 50px;"></div>
+        
+        <div class="post-comments">
+          <div id="disqus_thread"></div>
+<script>
+  window.addEventListener("load", () => {
+    (function() {
+      
+      var d = document,
+        s = d.createElement("script");
+      s.src = "https://joway.disqus.com/embed.js";
+      s.setAttribute("data-timestamp", +new Date());
+      (d.head || d.body).appendChild(s);
+    })();
+  });
+</script>
+<noscript
+  >Please enable JavaScript to view the
+  <a href="https://disqus.com/?ref_noscript"
+    >comments powered by Disqus.</a
+  ></noscript
+>
+
+        </div>
+        
+-->        
+
+        <div class="site-footer">
+  
+    
+  <div class="site-footer-item">
+    <a href="../about.html" target="_self">About</a>
+  </div>
+  
+  
+</div>
+
+      </div>
+    </div>
+  </article>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script src="../assets/js/switch.js" type="text/javascript"></script>
+  <script src="../assets/js/highlight.pack.js"></script>
+  
+
+<script>
+  hljs.initHighlightingOnLoad();
+  
+  
+  
+    
+    
+  
+</script>
+
+  
+
+</body>
+
+</html>

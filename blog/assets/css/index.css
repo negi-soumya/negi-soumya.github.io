@@ -15,6 +15,11 @@
   font-family: "Arvo";
   src: url(../fonts/Arvo.woff2);
 }
+
+@font-face {
+  font-family: "font-awesome";
+  src: url(../fonts/font-awesome/fa-regular-900.woff2);
+}
 */
 
 
@@ -64,7 +69,7 @@ a:hover {
 /* overwrite github-markdown */
 
 .markdown-body {
-  font-size: 18px;
+  font-size: 16px;
 }
 
 /* i18n */
@@ -172,7 +177,7 @@ a:hover {
 }
 
 .post-title {
-  font-size: 2.5rem;
+  font-size: 2.3rem;
   font-weight: 600;
 }
 
@@ -185,12 +190,12 @@ a:hover {
 
 .post-date {
   font-weight: 800;
-  font-style: italic;
 }
 
 .post-author {
   float: right;
   font-weight: 600;
+  font-style: italic;
 }
 
 .post-content {
@@ -203,6 +208,7 @@ a:hover {
   /* text-align: justify; */
   text-justify: ideographic;
   margin-bottom: 1em;
+  font-weight: 100;
 }
 
 .releated-content {
