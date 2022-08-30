@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Appleseed's Blog>/title>
+</head>
+
+<body>
+    <h1><a href="{{ url_for("index") }}">Appleseed's Blog</a></h1>
+
+    <div>
+        {% block content %}
+        <p>Default Content</p>
+        {% endblock content %}
+    </div>
+</body>
+</html>
