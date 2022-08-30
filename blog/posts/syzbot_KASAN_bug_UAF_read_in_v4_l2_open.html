@@ -241,7 +241,7 @@ The only viable option(i.e. locks common to both function whose use would not cr
 
 </code></pre>
 
-<p> To disable the V4L2 file ops, use the empty v4l2 file ops templates and then set the
+<p> To disable theV4L2 file ops, use the empty v4l2 file ops templates and then set the
 file op reference to the device templates with valid v4l2 file op function references.</p>
 
 <p>Device templates will be changed as below.</p> 
@@ -258,11 +258,8 @@ file op reference to the device templates with valid v4l2 file op function refer
  	.ioctl_ops	= &radio_ioctl_ops,
  	.release	= video_device_release_empty,
  };
-</code></pre>
 
 
-
-        </div>
 
 <!-- Full stack trace -->
 <h3>Full stack trace</h3>
