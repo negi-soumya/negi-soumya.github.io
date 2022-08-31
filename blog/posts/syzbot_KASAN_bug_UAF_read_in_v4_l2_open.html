@@ -149,7 +149,7 @@ Linux Media subsystem</a>.</p>
 
 <h3>Bug premise</h3> <!-- Mark sub-section -->
 	<p>Video device <code>vdev</code>(of type <code>struct video_device *</code>) 
-is being read in <code>em28xxdev_v4l2_open()</code> (called by <code>v4l2_open()</code>) 
+is being read in <code>em28xx_v4l2_open()</code> (called by <code>v4l2_open()</code>) 
 after it has been freed in a call to <code>em28xx_v4l2_init()</code>.
 
 	
@@ -166,7 +166,7 @@ to <code>em28xx_v4l2_open()</code> in the driver code.</p>
 by the V4L2 interface to unregister the video device) and <code>v4l2_open()</code>. 
 <code>em28xx_v4l2_open()</code> is accessing the video device after it has been 
 freed(by the release callback when there is no device user left) and is passing 
-it on to <code>v4l2_fh_open</code> which in turn is passing it onto 
+it on to <code>v4l2_fh_open()</code> which in turn is passing it onto 
 <code>v4l2_fh_init()</code> where the use-after-free read actually occurs.</p>
 
 
@@ -174,7 +174,7 @@ it on to <code>v4l2_fh_open</code> which in turn is passing it onto
 
 	<p>The process I used to work on the bug was far from perfect. But still, the 
 below section lists out the various strategies I thought out and tried. Clearly, 
-most of them were not the fix. However, it was helpful to come up with them because 
+most of them did not fix the bug. However, it was helpful to come up with them because 
 I was able to follow up in a new direction by looking at why a certain approach was 
 not working out. Mostly, I had to refer back to the subsystem documentation and 
 rest of the subsystem code to study up on Linux Media internals.</p>
@@ -183,23 +183,23 @@ rest of the subsystem code to study up on Linux Media internals.</p>
 As a brute attempt, I increased the refcount to <code>struct em28xx_v4l2_ *v4l2</code> in <code>em28xx_v4l2_open()</code> using <code>kref_get()</code> with the mutex <code>dev->lock</code> (part of <code>struct em28xx</code>) locked to prevent <code>video_device_unregister()</code> from freeing up device while <code>em28xx_v4l2_open()</code> uses <code>vdev</code>. However, it doesn't make any sense to do this. The <code>vdev</code> can already be freed before it is extracted from file in <code>em28xx_v4l2_open()</code>. <code>vdev</code> can still be read before <code>kref_get()</code> causing use-after-free read. 
 
 <h3>Try #2</h3> <!-- Mark sub-section -->
-I attempted to solve the race via additional locking in <code>v4l2-dev.c</code>. I considered locking the call to <code>device_unregister()</code> inside <code>video_device_register()</code> and locking the <code>vdev</code> extraction inside <code>em28xx_v4l2_open()</code> using the mutex <code>videodev_lock</code> static to <code>v4l2-dev.c</code>. This logic was wrong and caused a deadlock.
+I attempted to solve the race via additional locking in <code>v4l2-dev.c</code>. I considered locking the call to <code>device_unregister()</code> inside <code>video_device_register()</code> and locking the <code>vdev</code> extraction inside <code>em28xx_v4l2_open()</code> using the mutex <code>videodev_lock</code> (static to <code>v4l2-dev.c</code>). This logic was wrong and caused a deadlock.
 
 <h3>Try #3</h3> <!-- Mark sub-section -->
 Used the mutex <code>vdev->lock</code> inside <code>v4l2_open()</code> and <code>em28xx_v4l2_init()</code> to make them mutually exclusive. This also deadlocked.
 
 <h3>Try #4</h3> <!-- Mark sub-section -->
-	<p>The only viable option(i.e. locks common to both functions whose use would not create a deadlock ) was the mutex available in the <code>struct em28xx device</code> pointer <code>*dev</code>(i.e <code>dev->lock</code>). <code>video_device_unregister</code> marks <code>vdev</code> as unregistered with <code>dev->lock</code> locked. What if <code>vdev(</code> extraction from file in <code>em28xx_v4l2_open()</code> is locked with <code>dev->lock</code> as well? The issue still remained.</p> 
-	<p>Pointer to <code>vdev</code> extracted from file eventually points to a <code>struct video_device</code> object. So, if <code>device_unregister()</code> is called on </code>vdev</code> before extraction, <code>vdev</code> is not and can not be nulled since it is not a pointer. Thus, there is no way to check if <code>vdev</code> has been freed or not.</p>
+	<p>The only viable option(i.e. locks common to both functions whose use would not create a deadlock ) was the mutex available in the <code>struct em28xx device</code> pointer <code>*dev</code>(i.e <code>dev->lock</code>). <code>video_device_unregister()</code> marks <code>vdev</code> as unregistered with <code>dev->lock</code> locked. What if <code>vdev</code> extraction from file in <code>em28xx_v4l2_open()</code> is locked with <code>dev->lock</code> as well? The issue still remained.</p> 
+	<p>Pointer to <code>vdev</code> extracted from file eventually points to a <code>struct video_device</code> object. So, if <code>device_unregister()</code> is called on <code>vdev</code> before extraction, <code>vdev</code> is not and can not be nulled since it is not a pointer. Thus, there is no way to check if <code>vdev</code> has been freed or not.</p>
 
 <h3>Try #5 (Worked)</h3> <!-- Mark sub-section -->
-	<p>Since making V4L2 extension initialization and <code>v4l2_open()</code> mutually exclusive was not working out, I thought of ways to bar V4L2 file open operation (<code>v4l2_open()</code>) while V4L2 extension was being initialized (<code>em28xx_v4l2_init()</code>).</p>
+	<p>Since making V4L2 extension initialization and <code>v4l2_open()</code> mutually exclusive was not working out, I thought of ways to bar V4L2 file open operation (<code>v4l2_open()</code>) while V4L2 extension was being initialized in<code>em28xx_v4l2_init()</code>.</p>
 	
 	
 <h2>The fix</h2> <!-- Mark section -->
-	<p>The <a href="https://lore.kernel.org/lkml/20220829132548.23520-1-soumya.negi97@gmail.com/" target="_blank">patch</a> makes changes in <code>em28xx_v4l2_init(</code>). It temporarily disables V4L2 file operations on <code>struct video_device</code> devices(video, vbi, radio) before registering them and enables the file operations on the <code>video_device</code> only at the end of the <code>em28xx_v4l2_init()</code> codepath in which V4L2 extension initialization has succeeded.</p>
+	<p>The <a href="https://lore.kernel.org/lkml/20220829132548.23520-1-soumya.negi97@gmail.com/" target="_blank">patch</a> makes changes in <code>em28xx_v4l2_init()</code>. It temporarily disables V4L2 file operations on <code>struct video_device</code> devices(video, vbi, radio) before registering them and enables the file operations on the <code>video_device</code> devices only at the end of the <code>em28xx_v4l2_init()</code> codepath in which V4L2 extension initialization succeeds.</p>
 
-<p>The following templates present in <code>drivers/media/usb/em28xx/em28xx-video.c</code> are used in <code>em28xx_v4l2_init()</code> to initialize the video, vbi and radio devices(all of type <code>struct video_device</code>) before registering them.</p>
+<p>The following templates present in <code>drivers/media/usb/em28xx/em28xx-video.c</code> are used by <code>em28xx_v4l2_init()</code> to initialize the video, vbi and radio devices (all of type <code>struct video_device</code>) before registering them.</p>
 
 <pre><code>static const struct video_device em28xx_video_template = {
 	.fops		= &em28xx_v4l_fops,
@@ -257,7 +257,7 @@ Used the mutex <code>vdev->lock</code> inside <code>v4l2_open()</code> and <code
 
 </code></pre>
 
-<p> The <code>video_device</code> templates now use the empty <code>v4l2_file_operations</code> templates for <code>.fops</code>. This means the <code>video_device</code> intialized will have the V4L2 operations disabled. Device templates will be changed as below.</p> 
+<p> The <code>video_device</code> templates now use the empty <code>v4l2_file_operations</code> templates for <code>.fops</code>. This means the <code>video_device</code> registered will have the V4L2 operations disabled. Device templates will be changed as below.</p> 
 <pre><code>static const struct video_device em28xx_video_template = {
 	.fops		= &em28xx_v4l_fops_empty,
 	.ioctl_ops	= &video_ioctl_ops,
@@ -274,7 +274,7 @@ Used the mutex <code>vdev->lock</code> inside <code>v4l2_open()</code> and <code
 
 </pre></code>
 
-<p>After V4L2 extension is successfully initialized inside <code>em28xx_v4l2_init()</code>, enable V4L2 file operation by setting <code>.fops</code> to <code>em28xx_v4l_fops</code> for the video and vbi devices to and radio devices and <code>em28xx_v4l_fops</code> for the radio device.</p>
+<p>After V4L2 extension is successfully initialized inside <code>em28xx_v4l2_init()</code>, enable V4L2 file operation by setting <code>.fops</code> to <code>em28xx_v4l_fops</code> for the video and vbi devices, and setting <code>.fops</code> to <code>radio_fops</code> for the radio device.</p>
 
 <!-- Black block -->
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4">
