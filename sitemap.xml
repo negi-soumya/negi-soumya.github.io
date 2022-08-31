@@ -1,11 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-	<url>
-		<loc>https://negi-soumya.github.io/</loc>
-		<lastmod>2022-08-29T16:12:20-08:00</lastmod>
-	</url>
-	<url>
-		<loc>https://negi-soumya.github.io/blog/</loc>
-		<lastmod>2022-08-29T17:56:12-08:00</lastmod>
-	</url>
+<urlset
+      xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+            http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+<!-- created with Free Online Sitemap Generator www.xml-sitemaps.com -->
+
+
+<url>
+  <loc>https://negi-soumya.github.io/</loc>
+  <lastmod>2022-08-31T06:02:28+00:00</lastmod>
+  <priority>1.00</priority>
+</url>
+<url>
+  <loc>https://negi-soumya.github.io/blog/index.html</loc>
+  <lastmod>2022-08-31T06:02:28+00:00</lastmod>
+  <priority>0.80</priority>
+</url>
+<url>
+  <loc>https://negi-soumya.github.io/blog/posts/syzbot_KASAN_bug_UAF_read_in_v4_l2_open.html</loc>
+  <lastmod>2022-08-31T06:02:28+00:00</lastmod>
+  <priority>0.64</priority>
+</url>
+<url>
+  <loc>https://negi-soumya.github.io/blog/categories/oss.html</loc>
+  <lastmod>2022-08-31T06:02:28+00:00</lastmod>
+  <priority>0.64</priority>
+</url>
+<url>
+  <loc>https://negi-soumya.github.io/blog/posts/getting_started_with_opensource.html</loc>
+  <lastmod>2022-08-31T06:02:28+00:00</lastmod>
+  <priority>0.64</priority>
+</url>
+<url>
+  <loc>https://negi-soumya.github.io/blog/about.html</loc>
+  <lastmod>2022-08-31T06:02:27+00:00</lastmod>
+  <priority>0.64</priority>
+</url>
+
+
 </urlset>
