@@ -23,9 +23,9 @@
     <div class="wrapper">
         <div class="sidebar-wrapper">
             <div class="profile-container">
-                <img class="profile" src="assets/images/me_2023_circle.png" alt="" />
+                <img class="profile" src="assets/images/circle-cropped.png" alt="" />
                 <h1 class="name">Soumya Negi</h1>
-                <h3 class="tagline">Grad student</h3>
+                <h3 class="tagline">Software Engineer</h3>
             </div><!--//profile-container-->
             
             <div class="education-container container-block">
@@ -86,14 +86,31 @@
             <section class="section summary-section">
                 <h2 class="section-title"><span class="icon-holder"><i class="fas fa-user"></i></span>Career Profile</h2>
                 <div class="summary">
-                    <p>Recent MS in Computer Science grad from University of Southern California. Interested in <b>Operating Systems, Virtualization and Parallel Systems.</b></p>
+                    <p>Recent MS in Computer Science grad from University of Southern California. Interested in <b>System Software, Operating Systems, Virtualization and Parallel Systems.</b></p>
                 </div><!--//summary-->
             </section><!--//section-->
             
             <section class="section experiences-section">
                 <h2 class="section-title"><span class="icon-holder"><i class="fas fa-briefcase"></i></span>Experiences</h2>
                 
-               <div class="item">
+                <div class="item">
+                    <div class="meta">
+                        <div class="upper-row">
+                            <h3 class="job-title">Outreachy </h3>
+                            <div class="time">Dec 2023-Present</div>
+                        </div><!--//upper-row-->
+                        <div class="company">Linux Kernel Intern</div>
+                    </div><!--//meta-->
+                    <div class="details">
+                        <p>Currently improving the <i>sysfs</i> implementation in DRM driver <i>i915</i>(i.e the Intel graphics driver) by reviewing & refactoring the <i>sysfs</i> power managament structure in <i>drivers/gpu/drm/i915/gt/intel_gt_sysfs_pm.c</i> . The purpose is to split the code for GTs(tiles) & general GPU in the driver. Changes made to the driver will be tested using the <a href="https://gitlab.freedesktop.org/drm/igt-gpu-tools" target="_blank">IGT suite</a>.<br>
+Mentors: Andi Shyti & Karolina Stolarek
+                        <br><span class="details"><a href="https://www.outreachy.org/outreachy-december-2023-internship-round/communities/linux-kernel/#improve-i915-sysfs-interface-implementation" target="_blank">[Project Details]</a></span> <span class="details"> <a href="https://patchwork.freedesktop.org/project/intel-gfx/list/?submitter=21090" target="_blank">[Patches]</a></span>
+                        </p>  
+                        
+                    </div><!--//details-->
+                </div><!--//item-->
+                
+                <div class="item">
                     <div class="meta">
                         <div class="upper-row">
                             <h3 class="job-title">Linux Kernel Mentorship Program @ Linux Foundation </h3>
@@ -103,7 +120,7 @@
                     </div><!--//meta-->
                     <div class="details">
                         <p>As part of the Summer 2022 Linux Bug Fixing round, worked mainly on bugs reported by <a href="https://syzkaller.appspot.com/upstream" target="_blank">Syzbot</a>(a fuzzer), ran build tests for release candidates, contributed patches to upstream etc. Mentored by Shuah Khan(Linux Fellow, maintainer) & Pavel Skripkin. Instances of Kernel Debugging experience have been described in <a href="https://negi-soumya.github.io/blog/" target="_blank">[Blog]</a>
-                        <br><span class="details"><a href="https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/log/?qt=author&q=Soumya+Negi" target="_blank">[Linux Contributions]</a></span></p> 
+                        <br><span class="details"><a href="https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/log/?qt=author&q=Soumya+Negi" target="_blank">[Linux Contributions]</a></span>
                         </p>  
                         
                     </div><!--//details-->
