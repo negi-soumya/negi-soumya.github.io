@@ -8,34 +8,54 @@
 
 
 <url>
-  <loc>https://negi-soumya.github.io/blog/</loc>
-  <lastmod>2022-09-01T21:39:41+00:00</lastmod>
+  <loc>https://negi-soumya.github.io/</loc>
+  <lastmod>2023-11-27T08:43:58+00:00</lastmod>
   <priority>1.00</priority>
 </url>
 <url>
-  <loc>https://negi-soumya.github.io/blog/posts/syzbot_KASAN_bug_UAF_read_in_v4_l2_open.html</loc>
-  <lastmod>2022-09-01T21:39:41+00:00</lastmod>
+  <loc>https://negi-soumya.github.io/blog/index.html</loc>
+  <lastmod>2023-11-27T08:43:58+00:00</lastmod>
   <priority>0.80</priority>
 </url>
 <url>
-  <loc>https://negi-soumya.github.io/blog/categories/oss.html</loc>
-  <lastmod>2022-09-01T21:39:41+00:00</lastmod>
+  <loc>https://negi-soumya.github.io/blog/</loc>
+  <lastmod>2023-11-27T08:43:58+00:00</lastmod>
   <priority>0.80</priority>
+</url>
+<url>
+  <loc>https://negi-soumya.github.io/blog/posts/syzbot_KASAN_bug_UAF_read_in_v4_l2_open.html</loc>
+  <lastmod>2023-11-27T08:43:58+00:00</lastmod>
+  <priority>0.64</priority>
+</url>
+<url>
+  <loc>https://negi-soumya.github.io/blog/categories/lkmp.html</loc>
+  <lastmod>2023-11-27T08:43:58+00:00</lastmod>
+  <priority>0.64</priority>
 </url>
 <url>
   <loc>https://negi-soumya.github.io/blog/posts/getting_started_with_opensource.html</loc>
-  <lastmod>2022-09-01T21:39:41+00:00</lastmod>
-  <priority>0.80</priority>
+  <lastmod>2023-11-27T08:43:58+00:00</lastmod>
+  <priority>0.64</priority>
 </url>
 <url>
   <loc>https://negi-soumya.github.io/blog/about.html</loc>
-  <lastmod>2022-09-01T21:39:41+00:00</lastmod>
-  <priority>0.80</priority>
+  <lastmod>2023-11-27T08:43:58+00:00</lastmod>
+  <priority>0.64</priority>
 </url>
 <url>
-  <loc>https://negi-soumya.github.io/blog/index.html</loc>
-  <lastmod>2022-09-01T21:39:41+00:00</lastmod>
-  <priority>0.64</priority>
+  <loc>https://negi-soumya.github.io/blog/categories/oss.html</loc>
+  <lastmod>2023-11-27T08:43:58+00:00</lastmod>
+  <priority>0.51</priority>
+</url>
+<url>
+  <loc>https://negi-soumya.github.io/blog/posts/beginning_outreachy.html</loc>
+  <lastmod>2023-11-27T08:43:58+00:00</lastmod>
+  <priority>0.41</priority>
+</url>
+<url>
+  <loc>https://negi-soumya.github.io/blog/categories/outreachy.html</loc>
+  <lastmod>2023-11-27T08:43:58+00:00</lastmod>
+  <priority>0.33</priority>
 </url>
 
 
