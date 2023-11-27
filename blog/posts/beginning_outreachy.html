@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en-us" prefix="og: http://ogp.me/ns#">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!--
+  <link rel="canonical" href="" />
+  -->
+ 
+<title>Beginning Outreachy..with Linux Kernel!</title> <!-- Title -->
+  <link rel="stylesheet" href="../assets/css/flexboxgrid-6.3.1.min.css" />
+  <link rel="stylesheet" href="../assets/css/github-markdown.css" />
+  <link rel="stylesheet" href="../assets/css/highlight/tomorrow.min.css" />
+  <link rel="stylesheet" href="../assets/css/index.css" />
+  
+  <link href="https://fonts.googleapis.com/css?family=Arvo|Permanent+Marker|Bree+Serif" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+
+
+<body>
+  <article class="post English" id="article">
+    <div class="row">
+      <div class="col-xs-12">
+        <div class="site-header">
+          
+<header>
+  <div class="signatures site-title">
+    <a href="../index.html">My Log</a>
+  </div>
+</header>
+<div class="row end-xs">
+  
+  <div class="lang-switch col-xs-3 col-xs-offset-9">
+    <a href="#" id="switch"><i class="fa fa-lightbulb-o"> </i>Switch</a>
+  </div>
+  
+  
+  
+</div>
+<div class="header-line"></div>
+	
+        </div>
+        <header class="post-header">
+        
+          <h1 class="post-title">Beginning Outreachy..with Linux Kernel! </h1> <!-- Title -->
+          
+          <div class="row post-desc">
+            
+            <div class="col-xs-6">
+              
+              <time class="post-date" datetime="2023-12-04 00:00:00 PT"> <!-- Date -->
+                Dec 04, 2023
+              </time>
+              
+            </div>
+            <div class="col-xs-6">
+              
+              <div class="post-author">
+                <a target="_blank" href="https://negi-soumya.github.io">@Soumya Negi</a> <!-- Author -->
+              </div>
+              
+            </div>
+          </div>
+          
+        </header>
+
+<!-- Begin content -->
+        <div class="post-content markdown-body">
+         	
+         	<p>I'll be spending my winter as an <a href="https://www.outreachy.org/" target="_blank">Outreachy</a> intern with the <i>Linux Kernel</i> organization :)<p>
+         	
+<!-- Black block -->
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4">
+<span style="color:#66d9ef">Outreachy is a 3-month long paid internship program. 
+
+It runs twice a year(May & December cohorts) & is aimed at people who face under-representation
+in tech. Different open source and open science organizations come together under the Outreachy 
+umbrella each round to offer projects and mentors from their communities. </span>
+</pre></div>
+	
+	<p>My name is <a href="https://negi-soumya.github.io" target="_blank">Soumya</a> and I'm interested in System Software. My venture into Operating Systems is fairly recent. I took an OS course in undergrad which was mostly theoretical, compiled my first kernel & completed a few basic assignments(writing a barebones bootloader, a simple kernel module etc). It was quite different from the programming I had done until then...tough, but engaging. </p>
+	<p>I remember the first time I looked up Linux source code on <a href="https://www.kernel.org/">kernel.org</a>. I came across the git trees in the <a href="https://git.kernel.org/" target="_blank">archives</a>, was utterly confused by the lack of code files...and moved on. A few years later, I took another OS course in grad school that had a lot more coding. Was so much more intense as well. I liked the work and started looking for ways to get into kernel development.</p>
+	<p> Which brings us to back to Outreachy! If I'm not wrong, the Linux community participates in every cohort. I had heard of Outreachy long before I actually applied. In fact, I don't even remember how many years back I registered on their website. But I'm very happy that I did. This wasn't the first time I applied but it was the first time I was accepted. <strong>And those kernel archives do make sense to me now:)</strong></p>
+
+<h2></h2> <!-- Mark section -->
+	<p>My core values are:</p>
+	
+	<p>#1<br>
+	<strong>Perseverance</strong>. Because life and career are not going to flow smoothly. Discipline, growth, motivation and possibly everything else will fluctuate. Having the resolve to roll through it all is important to keep moving forward.	
+	</p>
+	
+	<p>#2<br>
+	Being respectful of others. 	
+	</p>
+<!--	<p> Prospective interns are encouraged to contribute to the projects of their choice during the application period itself. I say "encouraged" but serious applicants will know that these initial patches/PRs are what define your application. To put this into perspective, Outreachy did not ask me for my resume! It's what you learn and do during the contribution period that matters.<p> -->
+	
+
+<h2>My Project: "Improve i915 sysfs implementation"</h2> <!-- Mark section -->
+	<p><a href="">Andi Shyti</a> and <a href="">Karolina Stolarek</a> will be mentoring me on this project.</p>
+	<p>I'll be working on improving the implementation of <code>sysfs</code> in the <code>i915</code> driver. <code>i915</code> is the driver that provides support for Intel Graphics on Linux systems (think GPUs). It was first added in <code>Linux 2.6.9-rc2</code> for the Intel 915G chipset. Support for other chipset families was added to the same driver while the driver name remained the same. </p>
+	<p>Modern GPU architectures are no longer monolithic and some GPU platforms are divided into tiles (GTs). The <code>i915</code> driver caters to different Intel GPU devices. The main aim of the <a href="https://www.outreachy.org/outreachy-december-2023-internship-round/communities/linux-kernel/#improve-i915-sysfs-interface-implementation" target="_blank">project</a> is to refactor the power management structure in <code>drivers/gpu/drm/i915/gt/intel_gt_sysfs_pm.c</code> such that the code for general GPU and tiles is split. The changes will be tested using the <a href="https://gitlab.freedesktop.org/drm/igt-gpu-tools" target="_blank">IGT suite</a>.</p>
+
+<h2></h2> <!-- Mark section -->
+<p>Technical details coming up in the next post!</p>
+<img src="../assets/images/outreachy.png" style="object-fit:contain">
+
+<!-- Black block -->
+<!--
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4">
+<span style="color:#66d9ef">OutreachyFirstPatch: <a href="https://kernelnewbies.org/Outreachyfirstpatch" target="_blank">https://kernelnewbies.org/Outreachyfirstpatch</a> 
+LFD103: <a href="https://training.linuxfoundation.org/training/a-beginners-guide-to-linux-kernel-development-lfd103/" target="_blank">https://training.linuxfoundation.org/training/a-beginners-guide-to-linux-kernel-development-lfd103/</a> </span>
+</pre></div>
+-->
+
+
+<hr>
+	</div>
+<br><br>
+
+<!-- -------------------------End of content---------------------------------- -->
+
+        <div class="row middle-xs"> 
+          <div class="col-xs-12">
+            
+            <div class="post-category"> 
+              <a href="../categories/oss.html"> <!-- Category -->
+                OSS
+              </a>
+            </div>
+            &nbsp;
+            <div class="post-category"> 
+              <a href="../categories/outreachy.html"> <!-- Category -->
+                OUTREACHY
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-xs-12">
+            
+          </div>
+        </div>
+
+        
+        
+
+<div class="releated-content"> 
+  <h3>Related Posts</h3>
+  <ol> <!-- Add related posts if any -->
+    <li style="color:grey"><h4>Beginning Outreachy..with Linux Kernel!</h4></li>
+<!--    <li><h4><a href="./comingsoon.html">Outreachy Week-3:</a></h4></li> -->
+  </ol>
+</div>
+
+        
+<!--      
+        <div style="height: 50px;"></div>
+        
+        <div class="post-comments">
+          <div id="disqus_thread"></div>
+<script>
+  window.addEventListener("load", () => {
+    (function() {
+      
+      var d = document,
+        s = d.createElement("script");
+      s.src = "https://joway.disqus.com/embed.js";
+      s.setAttribute("data-timestamp", +new Date());
+      (d.head || d.body).appendChild(s);
+    })();
+  });
+</script>
+<noscript
+  >Please enable JavaScript to view the
+  <a href="https://disqus.com/?ref_noscript"
+    >comments powered by Disqus.</a
+  ></noscript
+>
+
+        </div>
+        
+-->        
+
+        <div class="site-footer">
+  
+    
+  <div class="site-footer-item">
+    <a href="../about.html" target="_self">About</a>
+  </div>
+  
+  
+</div>
+
+      </div>
+    </div>
+  </article>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script src="../assets/js/switch.js" type="text/javascript"></script>
+  <script src="../assets/js/highlight.pack.js"></script>
+  
+
+<script>
+  hljs.initHighlightingOnLoad();
+  
+  
+  
+    
+    
+  
+</script>
+
+  
+
+</body>
+
+</html>
